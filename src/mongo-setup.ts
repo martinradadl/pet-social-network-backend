@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
 
-const uri = "";
+const uri =
+  "mongodb+srv://martinrdl:martin01@cluster0.4t9qdhe.mongodb.net/money-tracking?retryWrites=true&w=majority&appName=Cluster0";
 
 export async function initMongo() {
   try {
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, { dbName: "pet-social-network" });
   } finally {
     console.log("mongosetup complete");
   }
