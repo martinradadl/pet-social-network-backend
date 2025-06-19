@@ -7,24 +7,39 @@ export const getFollowers = async (req: Request, res: Response) => {
 
     const follows = await followModel.Follow.find({ followedId });
     const followers = follows.map((follow) => follow.followerId);
-    return res.status(200).json(followers);
+    res.status(200).json(followers);
   } catch (err: unknown) {
     if (err instanceof Error) {
-      return res.status(500).json({ message: err.message });
+      res.status(500).json({ message: err.message });
+    }
+  }
+};
+
+export const getFollowing = async (req: Request, res: Response) => {
+  try {
+    const followerId = req.params.userId;
+
+    const follows = await followModel.Follow.find({ followerId });
+    const followings = follows.map((follow) => follow.followedId);
+    res.status(200).json(followings);
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(500).json({ message: err.message });
     }
   }
 };
 
 export const add = async (req: Request, res: Response) => {
   try {
+    const { followerId, followedId } = req.body;
     const newFollow = await followModel.Follow.create({
-      followerId: req.body.followerId,
-      followedId: req.body.followedId,
+      followerId,
+      followedId,
     });
-    return res.status(200).json(newFollow);
+    res.status(200).json(newFollow);
   } catch (err: unknown) {
     if (err instanceof Error) {
-      return res.status(500).json({ message: err.message });
+      res.status(500).json({ message: err.message });
     }
   }
 };
@@ -35,15 +50,15 @@ export const deleteOne = async (req: Request, res: Response) => {
       req.params.id
     );
     if (!deletedFollow) {
-      return res.status(404).json({
+      res.status(404).json({
         message: "Delete not successful",
         error: "Follow not found",
       });
     }
-    return res.status(200).json(deletedFollow);
+    res.status(200).json(deletedFollow);
   } catch (err: unknown) {
     if (err instanceof Error) {
-      return res.status(500).json({ message: err.message });
+      res.status(500).json({ message: err.message });
     }
   }
 };
