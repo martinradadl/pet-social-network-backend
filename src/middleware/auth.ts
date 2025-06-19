@@ -11,13 +11,11 @@ export const tokenVerification = (
   if (token) {
     jwt.verify(token.toString(), JWT_SECRET, (err: VerifyErrors | null) => {
       if (err) {
-        return res.status(401).json({ message: "Not authorized" });
+        res.status(401).json({ message: "Not authorized" });
       }
     });
   } else {
-    return res
-      .status(401)
-      .json({ message: "Not authorized, token not available" });
+    res.status(401).json({ message: "Not authorized, token not available" });
   }
   next();
 };
