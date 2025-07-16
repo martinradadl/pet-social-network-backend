@@ -11,11 +11,15 @@ import * as followModel from "../models/follow";
 import * as commentModel from "../models/comment";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { APP_URL, JWT_SECRET } from "../helpers/global";
+import { API_URL, JWT_SECRET } from "../helpers/global";
 import * as fs from "fs";
 import * as nodemailer from "nodemailer";
+import {
+  generateResetPasswordTemplate,
+  generateSuccessfulResetPasswordTemplate,
+  generateUserVerificationTemplate,
+} from "../templates/auth-templates";
 
-// env vars not set
 const emailSender = {
   email: process.env.SENDER_EMAIL,
   password: process.env.SENDER_PASSWORD,
@@ -25,29 +29,99 @@ export const maxAge = 3 * 60 * 60; // 3hrs in sec
 
 export const register = async (req: Request, res: Response) => {
   const { email, username, password, name } = req.body;
+  let token = "";
+
   if (password.length < 6) {
     res
       .status(400)
       .json({ message: "Password must have more than 6 characters" });
+    return;
   }
+
   try {
+    token = jwt.sign({ email }, JWT_SECRET, {
+      expiresIn: maxAge,
+    });
+
     const hash = await bcrypt.hash(password, 10);
-    const user = await userModel.User.create({
+    await userModel.User.create({
       email,
       username,
       password: hash,
       name,
     });
-    const token = jwt.sign({ id: user._id, email }, JWT_SECRET, {
-      expiresIn: maxAge,
-    });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(500).json({ message: err.message });
+      return;
+    }
+  }
 
-    res.status(200).json({
-      message: "User successfully created",
-      user,
-      token,
-      expiration: maxAge,
+  const link = `${API_URL}/verify-account/?xt=${token}`;
+
+  const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    host: "smtp.gmail.com",
+    port: 3000,
+    secure: true,
+    auth: {
+      user: emailSender.email,
+      pass: emailSender.password,
+    },
+  });
+
+  const mailOptions = {
+    from: emailSender.email,
+    to: email,
+    subject: "Activate your Petgram account",
+    html: /*HTML*/ `<h1>Activate your account</h1>
+    <p>
+      Hi ${name}, Your registration is almost finished, just click on this button to
+      activate your account
+    </p>
+    <a href="${link}"><button>Activate</button></a>`,
+  };
+
+  try {
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Error sending email: ", error);
+        res.status(400).json({ message: "Email could not be sent" });
+      } else {
+        console.log("Email sent: ", info.response);
+        res.status(200).json({
+          message: `Email has been sent to ${email}`,
+        });
+      }
     });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+};
+
+export const verifyAccount = async (req: Request, res: Response) => {
+  try {
+    const token = req.query.xt;
+    let error = "";
+    let email = "";
+
+    if (token) {
+      jwt.verify(token.toString(), JWT_SECRET, (err, decoded) => {
+        if (err) {
+          error =
+            "Something unexpected happened, please try again or contact support";
+        } else {
+          email = decoded?.toString() || "";
+        }
+      });
+    } else {
+      // token not available error
+      error = "Not Authorized";
+    }
+    const template = generateUserVerificationTemplate(email, error);
+    res.send(template);
   } catch (err: unknown) {
     if (err instanceof Error) {
       res.status(500).json({ message: err.message });
@@ -62,6 +136,7 @@ export const login = async (req: Request, res: Response) => {
     res.status(400).json({
       message: "Email or Password not present",
     });
+    return;
   }
   try {
     const user = await userModel.User.findOne({ email });
@@ -109,6 +184,7 @@ export const edit = async (req: Request, res: Response) => {
         message: "Edit not successful",
         error: "User not found",
       });
+      return;
     }
     // Empty string means profilePic removal was requested
     if (req.body.profilePic === "") {
@@ -134,6 +210,7 @@ export const changePassword = async (req: Request, res: Response) => {
     res
       .status(400)
       .json({ message: "Password must have more than 6 characters" });
+    return;
   }
   try {
     if (newPassword) {
@@ -148,6 +225,7 @@ export const changePassword = async (req: Request, res: Response) => {
           message: "Edit not successful",
           error: "User not found",
         });
+        return;
       }
       res.status(200).json(user);
     }
@@ -189,6 +267,7 @@ export const deleteUser = async (req: Request, res: Response) => {
         message: "Delete not successful",
         error: "User not found",
       });
+      return;
     }
     await storyModel.Story.deleteMany({ userId: req.params.id });
     await sharedPostModel.SharedPost.deleteMany({ userId: req.params.id });
@@ -219,12 +298,13 @@ export const forgotPassword = async (req: Request, res: Response) => {
       res.status(200).json({
         message: `Email has been sent to ${email}`,
       });
+      return;
     } else {
       const token = jwt.sign({ id: user._id }, JWT_SECRET, {
         expiresIn: maxAge,
       });
 
-      const link = `${APP_URL}/reset-password/?userId=${user._id}&token=${token}`;
+      const link = `${API_URL}/reset-password/?xt=${token}`;
 
       const transporter = nodemailer.createTransport({
         service: "Gmail",
@@ -242,7 +322,12 @@ export const forgotPassword = async (req: Request, res: Response) => {
           from: emailSender.email,
           to: user.email,
           subject: "Reset Password from Petgram",
-          html: `<h1>Reset Password</h1><p>Hi ${user.name}, you have forgotten your password. Don't worry, just click on this button</p><a href="${link}"><button>Reset Password</button></a>`,
+          html: /*HTML*/ `<h1>Reset Password</h1>
+          <p>
+            Hi ${user.name}, you have forgotten your password. Don't worry, just click on
+            this button
+          </p>
+          <a href="${link}"><button>Reset Password</button></a>`,
         };
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -265,28 +350,69 @@ export const forgotPassword = async (req: Request, res: Response) => {
   }
 };
 
+export const resetPasswordForm = async (req: Request, res: Response) => {
+  const token = req.query.xt?.toString();
+  if (token) {
+    const template = generateResetPasswordTemplate(token);
+    res.send(template);
+  } else {
+    res.status(401).json({
+      message: "Not Authorized",
+    });
+  }
+};
+
 export const resetPassword = async (req: Request, res: Response) => {
-  const newPassword = req.headers.newpassword?.toString();
-  if (newPassword && newPassword.length < 6) {
+  const { new_password, confirm_password } = req.body;
+  const token = req.query.xt;
+
+  if (!(new_password && confirm_password)) {
+    res.status(400).json({ message: "There are empty fields" });
+    return;
+  }
+  if (new_password !== confirm_password) {
+    res
+      .status(400)
+      .json({ message: "New Password and Confirm Password doesn't match" });
+    return;
+  }
+  if (new_password && new_password.toString().length < 6) {
     res
       .status(400)
       .json({ message: "Password must have more than 6 characters" });
+    return;
   }
   try {
-    if (newPassword) {
-      const hash = await bcrypt.hash(newPassword, 10);
-      const user = await userModel.User.findByIdAndUpdate(
-        req.params.id,
-        { $set: { password: hash } },
-        { new: true }
-      );
-      if (!user) {
-        res.status(401).json({
-          message: "Password change not successful",
-          error: "User not found",
+    if (new_password) {
+      if (token) {
+        jwt.verify(token.toString(), JWT_SECRET, async (err, decoded) => {
+          if (err) {
+            res.status(401).json({
+              message:
+                "Something unexpected happened, please try again or contact support",
+            });
+          } else {
+            const hash = await bcrypt.hash(new_password.toString(), 10);
+            const user = await userModel.User.findByIdAndUpdate(
+              //@ts-expect-error decoded type
+              decoded?.id || "",
+              { $set: { password: hash } },
+              { new: true }
+            );
+            if (!user) {
+              res.status(401).json({
+                message: "Password change not successful",
+                error: "User not found",
+              });
+              return;
+            }
+            console.log("user found");
+            const template = generateSuccessfulResetPasswordTemplate();
+            console.log("template: ", template);
+            res.send(template);
+          }
         });
       }
-      res.status(200).json(user);
     }
   } catch (err: unknown) {
     if (err instanceof Error) {
