@@ -1,7 +1,7 @@
 import bodyParser from "body-parser";
 import express from "express";
 import http from "http";
-// import { initMongo } from "./mongo-setup";
+import { initMongo } from "./mongo-setup";
 import cors from "cors";
 import { APP_URL } from "./helpers/global";
 import cookieParser from "cookie-parser";
@@ -21,11 +21,12 @@ const jsonParser = bodyParser.json();
 
 const app = express();
 const httpServer = http.createServer(app);
-const port = /*process.env.PORT ||*/ 3000;
+const port = process.env.PORT || 3000;
 
-// initMongo().catch(console.dir);
+initMongo().catch(console.dir);
 
 app.use(jsonParser);
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({ origin: APP_URL })); // APP_URL pending
 app.use(cookieParser());
 app.use(express.static("public"));
