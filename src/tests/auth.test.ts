@@ -615,13 +615,13 @@ describe("Authentication Controllers", () => {
       expect(res._getJSONData()).toEqual({ message: mockedCatchError.message });
     });
 
-    it.skip("should not find user", async () => {
+    it("should not find user", async () => {
       const { req, res } = initializeReqResMocks();
 
       vi.mocked(jwt, true).verify.mockImplementation(
         (_token, _JWT_SECRET, callback) => {
           //@ts-expect-error on callback
-          callback(null, { id: () => "fakeId" });
+          callback(null, { id: "fakeId" });
           vi.mocked(User.findByIdAndUpdate, true).mockResolvedValue(null);
         }
       );
@@ -633,17 +633,50 @@ describe("Authentication Controllers", () => {
       expect(res.statusCode).toBe(401);
       expect(res._getJSONData()).toEqual({
         message: "Password change not successful",
-        error: "User not found",
       });
     });
 
-    it.skip("Should reset password", async () => {
+    it("should not find decoded id", async () => {
       const { req, res } = initializeReqResMocks();
 
       vi.mocked(jwt, true).verify.mockImplementation(
         (_token, _JWT_SECRET, callback) => {
           //@ts-expect-error on callback
-          callback(null, { id: () => "fakeId" });
+          callback(null, { id: "" });
+          vi.mocked(User.findByIdAndUpdate, true).mockResolvedValue(null);
+        }
+      );
+
+      req.body.new_password = "newFakePassword";
+      req.body.confirm_password = "newFakePassword";
+      req.query.xt = "fakeToken";
+      await resetPassword(req, res);
+      expect(res.statusCode).toBe(401);
+      expect(res._getJSONData()).toEqual({
+        message: "Not Authorized",
+      });
+    });
+
+    it("should not find token", async () => {
+      const { req, res } = initializeReqResMocks();
+
+      req.body.new_password = "newFakePassword";
+      req.body.confirm_password = "newFakePassword";
+      req.query.xt = "";
+      await resetPassword(req, res);
+      expect(res.statusCode).toBe(401);
+      expect(res._getJSONData()).toEqual({
+        message: "Not Authorized",
+      });
+    });
+
+    it("Should reset password", async () => {
+      const { req, res } = initializeReqResMocks();
+
+      vi.mocked(jwt, true).verify.mockImplementation(
+        (_token, _JWT_SECRET, callback) => {
+          //@ts-expect-error on callback
+          callback(null, { id: "fakeId" });
           vi.mocked(User.findByIdAndUpdate, true).mockResolvedValue(fakeUser);
         }
       );

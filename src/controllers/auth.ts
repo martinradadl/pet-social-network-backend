@@ -365,6 +365,8 @@ export const resetPasswordForm = async (req: Request, res: Response) => {
 export const resetPassword = async (req: Request, res: Response) => {
   const { new_password, confirm_password } = req.body;
   const token = req.query.xt;
+  let id = "";
+  let error = "";
 
   if (!(new_password && confirm_password)) {
     res.status(400).json({ message: "There are empty fields" });
@@ -383,36 +385,43 @@ export const resetPassword = async (req: Request, res: Response) => {
     return;
   }
   try {
-    if (new_password) {
-      if (token) {
-        jwt.verify(token.toString(), JWT_SECRET, async (err, decoded) => {
-          if (err) {
-            res.status(401).json({
-              message:
-                "Something unexpected happened, please try again or contact support",
-            });
-          } else {
-            const hash = await bcrypt.hash(new_password.toString(), 10);
-            const user = await userModel.User.findByIdAndUpdate(
-              //@ts-expect-error decoded type
-              decoded?.id || "",
-              { $set: { password: hash } },
-              { new: true }
-            );
-            if (!user) {
-              res.status(401).json({
-                message: "Password change not successful",
-                error: "User not found",
-              });
-              return;
-            }
-            console.log("user found");
-            const template = generateSuccessfulResetPasswordTemplate();
-            console.log("template: ", template);
-            res.send(template);
-          }
-        });
+    if (token) {
+      jwt.verify(token.toString(), JWT_SECRET, async (err, decoded) => {
+        if (err) {
+          error =
+            "Something unexpected happened, please try again or contact support";
+        } else {
+          //@ts-expect-error decoded type
+          id = decoded?.id;
+        }
+      });
+      const hash = await bcrypt.hash(new_password.toString(), 10);
+      if (id) {
+        const user = await userModel.User.findByIdAndUpdate(
+          id || "",
+          { $set: { password: hash } },
+          { new: true }
+        );
+        if (!user) {
+          error = "Password change not successful";
+        }
+      } else {
+        error = "Not Authorized";
       }
+
+      if (error) {
+        res.status(401).json({
+          message: error,
+        });
+        return;
+      }
+      const template = generateSuccessfulResetPasswordTemplate();
+      res.send(template);
+    } else {
+      error = "Not Authorized";
+      res.status(401).json({
+        message: error,
+      });
     }
   } catch (err: unknown) {
     if (err instanceof Error) {
