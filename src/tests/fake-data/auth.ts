@@ -9,6 +9,7 @@ export const fakeUser = {
   bio: "fakeBio",
   profilePic: "fakeProfilePic",
   isPrivate: false,
+  isVerified: true,
 };
 
 export const fakeUser2 = {
@@ -20,4 +21,5 @@ export const fakeUser2 = {
   bio: "fakeBio2",
   profilePic: "fakeProfilePic2",
   isPrivate: true,
+  isVerified: false,
 };

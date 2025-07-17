@@ -120,6 +120,13 @@ export const verifyAccount = async (req: Request, res: Response) => {
       // token not available error
       error = "Not Authorized";
     }
+    if (email) {
+      await userModel.User.findOneAndUpdate(
+        { email },
+        { $set: { isVerified: true } },
+        { new: true }
+      );
+    }
     const template = generateUserVerificationTemplate(email, error);
     res.send(template);
   } catch (err: unknown) {
@@ -144,6 +151,11 @@ export const login = async (req: Request, res: Response) => {
       res.status(401).json({
         message: "Login not successful",
         error: "User not found",
+      });
+    } else if (!user.isVerified) {
+      res.status(401).json({
+        message: "Login not successful",
+        error: "User not verified",
       });
     } else {
       if (user.password && (await bcrypt.compare(password, user.password))) {

@@ -204,7 +204,7 @@ describe("Authentication Controllers", () => {
       );
     });
 
-    it("should return 200 when email is successfully decoded", async () => {
+    it("should return 200 when email is successfully decoded and user verified", async () => {
       const { req, res } = initializeReqResMocks();
       req.query.xt = "fakeToken";
       vi.mocked(jwt, true).verify.mockImplementation(
@@ -213,7 +213,7 @@ describe("Authentication Controllers", () => {
           callback(null, { toString: () => "fakeEmail" });
         }
       );
-
+      vi.mocked(User.findOneAndUpdate, true).mockResolvedValue(fakeUser);
       await verifyAccount(req, res);
       expect(res.statusCode).toBe(200);
       expect(res._getData()).toEqual(
@@ -260,6 +260,19 @@ describe("Authentication Controllers", () => {
       expect(res._getJSONData()).toEqual({
         message: "Login not successful",
         error: "User not found",
+      });
+    });
+
+    it("should return 401 when user is not verified", async () => {
+      const { req, res } = initializeReqResMocks();
+      req.body = { email: "fakeEmail", password: "fakePassword" };
+      vi.mocked(User.findOne, true).mockResolvedValue(fakeUser2);
+
+      await login(req, res);
+      expect(res.statusCode).toBe(401);
+      expect(res._getJSONData()).toEqual({
+        message: "Login not successful",
+        error: "User not verified",
       });
     });
 
