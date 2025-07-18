@@ -49,6 +49,7 @@ export const register = async (req: Request, res: Response) => {
       username,
       password: hash,
       name,
+      isPrivate: false,
       isVerified: false,
     });
   } catch (err: unknown) {
