@@ -49,6 +49,7 @@ export const register = async (req: Request, res: Response) => {
       username,
       password: hash,
       name,
+      isVerified: false,
     });
   } catch (err: unknown) {
     if (err instanceof Error) {
@@ -57,7 +58,7 @@ export const register = async (req: Request, res: Response) => {
     }
   }
 
-  const link = `${API_URL}/verify-account/?xt=${token}`;
+  const link = `${API_URL}/auth/verify-account/?xt=${token}`;
 
   const transporter = nodemailer.createTransport({
     service: "Gmail",
@@ -316,7 +317,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
         expiresIn: maxAge,
       });
 
-      const link = `${API_URL}/reset-password/?xt=${token}`;
+      const link = `${API_URL}/auth/reset-password/?xt=${token}`;
 
       const transporter = nodemailer.createTransport({
         service: "Gmail",
