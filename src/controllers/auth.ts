@@ -139,28 +139,29 @@ export const verifyAccount = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { email, password, username } = req.body;
 
-  if (!email || !password) {
+  if (!(email || username) || !password) {
     res.status(400).json({
       message: "Email or Password not present",
     });
     return;
   }
   try {
-    const user = await userModel.User.findOne({ email });
+    const user = await userModel.User.findOne(email ? { email } : { username });
     if (!user) {
       res.status(401).json({
-        message: "Login not successful",
-        error: "User not found",
-      });
-    } else if (!user.isVerified) {
-      res.status(401).json({
-        message: "Login not successful",
-        error: "User not verified",
+        message: "Your credentials are incorrect",
+        error: "Login not successful",
       });
     } else {
       if (user.password && (await bcrypt.compare(password, user.password))) {
+        if (!user.isVerified) {
+          res.status(401).json({
+            message: "User not verified",
+            error: "Login not successful",
+          });
+        }
         const token = jwt.sign({ id: user._id, email }, JWT_SECRET, {
           expiresIn: maxAge, // 3hrs in sec
         });
