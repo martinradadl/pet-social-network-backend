@@ -413,7 +413,7 @@ export const resetPassword = async (req: Request, res: Response) => {
       const hash = await bcrypt.hash(new_password.toString(), 10);
       if (id) {
         const user = await userModel.User.findByIdAndUpdate(
-          id || "",
+          id,
           { $set: { password: hash } },
           { new: true }
         );
