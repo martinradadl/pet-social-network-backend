@@ -8,6 +8,7 @@ const schema = new mongoose.Schema({
   bio: String,
   profilePic: String,
   isPrivate: Boolean,
+  isVerified: Boolean,
 });
 
 export const User = mongoose.model("User", schema);

@@ -7,8 +7,9 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --exec ts-node --env-file src/index.ts",
+    "test": "vitest --run",
+    "test:dev": "vitest --run --printConsoleTrace --coverage",
+    "dev": "nodemon --exec node -r ts-node/register --env-file=.env src/index.ts",
     "build": "tsc",
     "lint": "oxlint --max-warnings 0"
   },
