@@ -210,7 +210,7 @@ describe("Authentication Controllers", () => {
       vi.mocked(jwt, true).verify.mockImplementation(
         (_token, _JWT_SECRET, callback) => {
           //@ts-expect-error on callback
-          callback(null, { toString: () => "fakeEmail" });
+          callback(null, { email: "fakeEmail" });
         }
       );
       vi.mocked(User.findOneAndUpdate, true).mockResolvedValue(fakeUser);
@@ -258,8 +258,8 @@ describe("Authentication Controllers", () => {
       await login(req, res);
       expect(res.statusCode).toBe(401);
       expect(res._getJSONData()).toEqual({
-        message: "Login not successful",
-        error: "User not found",
+        message: "Your credentials are incorrect",
+        error: "Login not successful",
       });
     });
 
@@ -267,12 +267,15 @@ describe("Authentication Controllers", () => {
       const { req, res } = initializeReqResMocks();
       req.body = { email: "fakeEmail", password: "fakePassword" };
       vi.mocked(User.findOne, true).mockResolvedValue(fakeUser2);
+      bcrypt.compare = vi
+        .fn()
+        .mockImplementationOnce(() => Promise.resolve(true));
 
       await login(req, res);
       expect(res.statusCode).toBe(401);
       expect(res._getJSONData()).toEqual({
-        message: "Login not successful",
-        error: "User not verified",
+        message: "User not verified",
+        error: "Login not successful",
       });
     });
 
