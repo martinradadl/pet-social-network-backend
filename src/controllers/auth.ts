@@ -10,7 +10,7 @@ import * as followModel from "../models/follow";
 // import * as directMessageModel from "../models/direct-message";
 import * as commentModel from "../models/comment";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { API_URL, JWT_SECRET } from "../helpers/global";
 import * as fs from "fs";
 import * as nodemailer from "nodemailer";
@@ -115,7 +115,7 @@ export const verifyAccount = async (req: Request, res: Response) => {
           error =
             "Something unexpected happened, please try again or contact support";
         } else {
-          email = decoded?.toString() || "";
+          email = (decoded as JwtPayload).email || "";
         }
       });
     } else {
@@ -161,6 +161,7 @@ export const login = async (req: Request, res: Response) => {
             message: "User not verified",
             error: "Login not successful",
           });
+          return;
         }
         const token = jwt.sign({ id: user._id, email }, JWT_SECRET, {
           expiresIn: maxAge, // 3hrs in sec
