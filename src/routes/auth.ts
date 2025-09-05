@@ -10,7 +10,7 @@ router.post("/login", authController.login);
 router.get("/forgot-password/:email", authController.forgotPassword);
 router.get("/verify-account", authController.verifyAccount);
 router.put(
-  "/change-password/:id",
+  "/:id/change-password",
   tokenVerification,
   authController.changePassword
 );
